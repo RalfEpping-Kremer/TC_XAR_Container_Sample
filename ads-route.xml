@@ -7,7 +7,7 @@ xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2015/12/TcConfig"
         <!-- Replace this with the reachable IP address of the Docker host. -->
         <Address>ip-address-of-container-host</Address>
         <!-- Must match AMS_NETID in docker-compose.yaml. -->
-        <NetId>15.15.15.15.1.1</NetId>
+        <NetId>10.10.10.10.1.1</NetId>
         <Type>TCP_IP</Type>
         <Flags>64</Flags>
     </Route>

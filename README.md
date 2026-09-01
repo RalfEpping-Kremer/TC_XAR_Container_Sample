@@ -185,7 +185,16 @@ To connect your TwinCAT Engineering system (running on Windows) directly with th
 
    d. Restart the **TwinCAT System Service on Windows** (right-click the TwinCAT icon in the system tray → Config).
 
-   e. The containerized TwinCAT runtime should appear as an available target system in TwinCAT Engineering. In the default sample configuration, look for the target that uses AMS Net ID `15.15.15.15.1.1`.
+   e. The containerized TwinCAT runtime should appear as an available target system in TwinCAT Engineering. In the default sample configuration, log in with user `Administrator` and password `1`, then look for the target that uses AMS Net ID `10.10.10.10.1.1`.
+
+   The ADS hostname and credentials can be changed in the service configuration in `docker-compose.yaml`:
+   ```yaml
+   hostname: my-twincat-runtime
+   environment:
+     - ADS_USERNAME=Administrator
+     - ADS_PASSWORD=change-this-password
+   ```
+   Keep the password out of source control. A better option for deployments is to provide it through a protected Compose `.env` file or another secret-management mechanism. Rebuild the image after changing the startup configuration, then recreate the container with `sudo docker compose up -d --force-recreate`.
 
 ![](docs/choose-target-system.png)
 

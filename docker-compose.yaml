@@ -2,7 +2,9 @@ services:
   tc31-xar-base:
     image: tc31-xar-base:latest
     container_name: tc31-xar-base
-    hostname: tc31-xar-base
+    # Set ADS_HOSTNAME in this file or in the shell environment to change the
+    # hostname shown by the TwinCAT runtime.
+    hostname: ${ADS_HOSTNAME:-tc31-xar-base}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "tcadstool", "127.0.0.1.1.1", "state"]
@@ -34,3 +36,6 @@ services:
     environment:
       #- PCI_DEVICES=NONE
       - AMS_NETID=10.10.10.10.1.1
+      # These credentials are used by the ADS route login from TwinCAT Engineering.
+      - ADS_USERNAME=${ADS_USERNAME:-Administrator}
+      - ADS_PASSWORD=${ADS_PASSWORD:-1}

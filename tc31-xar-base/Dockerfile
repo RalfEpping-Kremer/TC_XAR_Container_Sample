@@ -4,7 +4,10 @@ FROM debian:trixie-slim
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
     curl \
-    ca-certificates
+    ca-certificates \
+    passwd \
+    \
+    && rm -rf /var/lib/apt/lists/*
 
 # Use login information in the bhf.conf file to authenticate against deb*.beckhoff.com
 # See https://manpages.debian.org/testing/apt/apt_auth.conf.5.en.html for more information
