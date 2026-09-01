@@ -5,12 +5,12 @@ This repository provides a step-by-step guide to build and deploy a containerize
 With this sample, you will learn how to:
 
 - Build and configure a TwinCAT XAR container image.
-- Set up secure communication using ADS-over-MQTT.
+- Set up direct ADS communication.
 - Manage containers with Docker Compose and Makefile automation.
 - Connect to the containerized TwinCAT runtime with TwinCAT Engineering.
 - Configure real-time Ethernet communication (optional).
 
-Here’s a high-level overview of what the completed setup will look like:
+Here's a high-level overview of what the completed setup will look like:
 
 ![](./docs/setup-overview.drawio.svg)
 
@@ -81,25 +81,28 @@ During the image build process, TwinCAT for Linux® will be downloaded from `htt
    ```
    You should see an entry with repository `tc31-xar-base` and tag `latest` in the output.
 
-## **2. Set up firewall rules for MQTT**
+## **2. Set up firewall rules for ADS**
 
-On the **Beckhoff IPC running Beckhoff RT Linux that will run Docker**, allow incoming TCP connections to the Mosquitto broker on port `1883` so ADS-over-MQTT can reach the sample.
+On the **Beckhoff IPC running Beckhoff RT Linux that will run Docker**, allow incoming ADS traffic on ports `48898/tcp` and `48899/udp` so TwinCAT Engineering can reach the containerized runtime directly.
 
-Create `/etc/nftables.conf.d/60-mosquitto-container.conf` with the following content:
+Create `/etc/nftables.conf.d/60-twincat-container.conf` with the following content:
 
 ```
-sudo nano /etc/nftables.conf.d/60-mosquitto-container.conf
+sudo nano /etc/nftables.conf.d/60-twincat-container.conf
 ```
 
 ```nft
 table inet filter {
   chain input {
-    tcp dport 1883 accept
+    tcp dport 48898 accept
+    udp dport 48899 accept
   }
   chain forward {
     type filter hook forward priority 0; policy drop;
-    tcp sport 1883 accept
-    tcp dport 1883 accept
+    tcp sport 48898 accept
+    tcp dport 48898 accept
+    udp sport 48899 accept
+    udp dport 48899 accept
   }
 }
 ```
@@ -119,7 +122,7 @@ Verify the rules were applied:
 sudo nft list ruleset
 ```
 
-You should see rules that reference TCP port `1883` in the output, especially the `tcp dport 1883 accept` rule and the corresponding forward-chain entries.
+You should see rules that reference ports `48898` and `48899` in the output, especially the `tcp dport 48898 accept` and `udp dport 48899 accept` rules and the corresponding forward-chain entries.
 
 Because reloading nftables flushes the Docker-managed firewall rules, restart the Docker service afterwards so Docker can recreate its network rules before you start the sample containers:
 
@@ -127,9 +130,9 @@ Because reloading nftables flushes the Docker-managed firewall rules, restart th
 sudo systemctl restart docker
 ```
 
-## **3. Start the containers**
+## **3. Start the container**
 
-The sample includes a `docker-compose.yaml` file to simplify the process of creating a container network and starting the MQTT broker as well as the TwinCAT runtime container.
+The sample includes a `docker-compose.yaml` file to simplify the process of starting the TwinCAT runtime container and publishing its ADS ports on the host.
 
 From the repository root directory, start the containers:
 
@@ -150,7 +153,7 @@ sudo docker compose ps
 # Or: sudo make list-containers
 ```
 
-You should see both `mosquitto` and `tc31-xar-base` containers with status "Up". Check the logs if any container is not running:
+You should see the `tc31-xar-base` container with status "Up". Check the logs if it is not running:
 
 ```bash
 sudo docker compose logs
@@ -159,24 +162,26 @@ sudo docker compose logs
 
 If `sudo docker compose up -d` reports `pull access denied for tc31-xar-base`, go back to Step 1 and confirm that the local image `tc31-xar-base:latest` was built successfully. The Compose file expects that image to exist locally before the sample is started.
 
-At this point, the Linux-host side of the sample is ready. The remaining ADS-over-MQTT setup moves to the Windows engineering PC, except for the quick host-IP lookup in step 4(a).
+At this point, the Linux-host side of the sample is ready. The remaining direct ADS setup moves to the Windows engineering PC, except for the quick host-IP lookup in step 4(a).
 
-## **4. Configure ADS-over-MQTT connections**
+## **4. Configure direct ADS connections**
 
-To connect your TwinCAT Engineering system (running on Windows) via ADS-over-MQTT with the containerized TwinCAT runtime:
+To connect your TwinCAT Engineering system (running on Windows) directly with the containerized TwinCAT runtime:
 
    a. On your **Beckhoff IPC running Beckhoff RT Linux**, list the network interfaces and their IP addresses:
    ```bash
    ip --brief address
    ```
-   In the output, look for the network interface that your Windows engineering PC can reach. Use its IPv4 address from the `inet` column when updating `mqtt.xml`. If the Beckhoff IPC has multiple network interfaces, choose the one that is connected to the same network as your Windows engineering PC.
+   In the output, look for the network interface that your Windows engineering PC can reach. Use its IPv4 address from the `inet` column when updating `ads-route.xml`. If the Beckhoff IPC has multiple network interfaces, choose the one that is connected to the same network as your Windows engineering PC.
 
-   b. On your **Windows engineering PC**, edit the `mqtt.xml` template from this repository. Replace `ip-address-of-container-host` with the IP address from step (a) — this is the IP address of your Beckhoff IPC running Beckhoff RT Linux and Docker.
+   b. On your **Windows engineering PC**, edit the `ads-route.xml` template from this repository. Replace `ip-address-of-container-host` with the IP address from step (a) - this is the IP address of your Beckhoff IPC running Beckhoff RT Linux and Docker.
 
-   c. Copy the edited `mqtt.xml` file to:
+   c. Copy the edited `ads-route.xml` file to the TwinCAT routes directory, renaming it to `StaticRoutes.xml`:
    ```
-   C:\Program Files (x86)\Beckhoff\TwinCAT\3.1\Target\Routes\
+   C:\Program Files (x86)\Beckhoff\TwinCAT\3.1\Target\Routes\StaticRoutes.xml
    ```
+
+   If `StaticRoutes.xml` already contains routes you need, merge the `<Route>` entry into its existing `<RemoteConnections>` element instead of replacing the file. Restart the TwinCAT system service or reopen the TwinCAT configuration so the route is loaded.
 
    d. Restart the **TwinCAT System Service on Windows** (right-click the TwinCAT icon in the system tray → Config).
 
@@ -188,7 +193,7 @@ To connect your TwinCAT Engineering system (running on Windows) via ADS-over-MQT
 - Verify the Beckhoff IPC running Beckhoff RT Linux is reachable from the Windows engineering PC
 - Verify the containers are running: `sudo docker compose ps` on the Beckhoff IPC running Beckhoff RT Linux
 - Check container logs: `sudo docker compose logs`
-- Use another MQTT client on Windows, such as MQTT Explorer, to check whether TwinCAT for Linux and the TwinCAT Engineering side have connected to the broker
+- Verify that TCP port `48898` and UDP port `48899` are allowed through the Beckhoff IPC firewall
 
 ## **5. Configure real-time Ethernet (Optional)**
 

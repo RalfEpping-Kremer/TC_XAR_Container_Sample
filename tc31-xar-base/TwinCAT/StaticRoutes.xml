@@ -2,9 +2,8 @@
 <TcConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2015/12/TcConfig">
 <RemoteConnections>
-    <Mqtt>
-        <Address Port="1883">mosquitto</Address>
-        <Topic>AdsOverMqtt</Topic>
-    </Mqtt>
+    <!-- Add <Route> entries here if the container needs to initiate ADS
+         connections back to another system. The sample is configured for
+         direct ADS access from the Windows engineering station. -->
 </RemoteConnections>
 </TcConfig>
