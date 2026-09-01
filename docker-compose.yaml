@@ -33,4 +33,4 @@ services:
     #  - PCI_DEVICES=0000:04:00.0 0000:03:00.0
     environment:
       #- PCI_DEVICES=NONE
-      - AMS_NETID=15.15.15.15.1.1
+      - AMS_NETID=10.10.10.10.1.1
